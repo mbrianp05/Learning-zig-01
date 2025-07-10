@@ -75,10 +75,10 @@ pub fn main() !void {
     const tree = try Node.init(std.heap.page_allocator, 10);
     defer tree.deinit();
 
-    try tree.insert(5);
+    try tree.insert(20);
     try tree.insert(7);
     try tree.insert(15);
-    try tree.insert(20);
+    try tree.insert(5);
 
     tree.inorder();
 

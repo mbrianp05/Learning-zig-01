@@ -4,25 +4,17 @@ const Node = struct {
     value: i32,
     left: ?*Node = null,
     right: ?*Node = null,
-    allocator: std.mem.Allocator,
+    arena: std.heap.ArenaAllocator,
 
     pub fn init(allocator: std.mem.Allocator, value: i32) !*Node {
         const node = try allocator.create(Node);
-        node.* = .{ .value = value, .allocator = allocator };
+        node.* = .{ .value = value, .arena = std.heap.ArenaAllocator.init(allocator) };
 
         return node;
     }
 
-    pub fn deinit(self: *Node, allocator: std.mem.Allocator) void {
-        if (self.left) |left| {
-            left.deinit(allocator);
-        }
-
-        if (self.right) |right| {
-            right.deinit(allocator);
-        }
-
-        allocator.destroy(self);
+    pub fn deinit(self: *Node) void {
+        self.arena.deinit();
     }
 
     pub fn search(self: *Node, value: i32) ?*Node {
@@ -54,7 +46,7 @@ const Node = struct {
                 return;
             }
 
-            self.left = try Node.init(self.allocator, value);
+            self.left = try Node.init(self.arena.allocator(), value);
             return;
         }
 
@@ -63,7 +55,7 @@ const Node = struct {
             return;
         }
 
-        self.right = try Node.init(self.allocator, value);
+        self.right = try Node.init(self.arena.allocator(), value);
     }
 
     pub fn inorder(self: *Node) void {
@@ -81,7 +73,7 @@ const Node = struct {
 
 pub fn main() !void {
     const tree = try Node.init(std.heap.page_allocator, 10);
-    defer tree.deinit(std.heap.page_allocator);
+    defer tree.deinit();
 
     try tree.insert(5);
     try tree.insert(7);

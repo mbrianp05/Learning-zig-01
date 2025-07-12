@@ -102,8 +102,9 @@ const Node = struct {
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
     defer _ = gpa.deinit();
+
+    const allocator = gpa.allocator();
 
     const tree = try Node.init(allocator, 10);
     defer tree.deinit();
@@ -126,7 +127,8 @@ pub fn main() !void {
 
     if (search == null) {
         std.debug.print("search: null\n", .{});
-    } else {
-        std.debug.print("search: {d}\n", .{search.?.value});
+        return;
     }
+
+    std.debug.print("search: {d}\n", .{search.?.value});
 }

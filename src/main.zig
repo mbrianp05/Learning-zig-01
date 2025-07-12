@@ -17,6 +17,24 @@ const Node = struct {
         self.arena.deinit();
     }
 
+    pub fn height(self: *Node) i32 {
+        var rightHeight: i32 = 0;
+        var leftHeight: i32 = 0;
+
+        if (self.right) |right| {
+            rightHeight = right.height();
+        }
+
+        if (self.left) |left| {
+            leftHeight = left.height();
+        }
+
+        if (self.left == null and self.right == null) return 1;
+        const max = if (rightHeight > leftHeight) rightHeight else leftHeight;
+
+        return max + 1;
+    }
+
     pub fn search(self: *Node, value: i32) ?*Node {
         if (self.value == value) return self;
 
@@ -91,5 +109,6 @@ pub fn main() !void {
         return;
     }
 
+    std.debug.print("tree height: {d}\n", .{tree.height()});
     std.debug.print("search: {d}\n", .{search.?.value});
 }

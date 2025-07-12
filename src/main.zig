@@ -7,8 +7,10 @@ const Node = struct {
     arena: std.heap.ArenaAllocator,
 
     pub fn init(allocator: std.mem.Allocator, value: i32) !*Node {
-        const node = try allocator.create(Node);
-        node.* = .{ .value = value, .arena = std.heap.ArenaAllocator.init(allocator) };
+        var arena = std.heap.ArenaAllocator.init(allocator);
+        const node = try arena.allocator().create(Node);
+
+        node.* = .{ .value = value, .arena = arena };
 
         return node;
     }
@@ -17,9 +19,9 @@ const Node = struct {
         self.arena.deinit();
     }
 
-    pub fn height(self: *Node) i32 {
-        var rightHeight: i32 = 0;
-        var leftHeight: i32 = 0;
+    pub fn height(self: *Node) u32 {
+        var rightHeight: u32 = 0;
+        var leftHeight: u32 = 0;
 
         if (self.right) |right| {
             rightHeight = right.height();
@@ -29,7 +31,9 @@ const Node = struct {
             leftHeight = left.height();
         }
 
-        if (self.left == null and self.right == null) return 1;
+        // Tree root does not count
+        // So we do not add level when reaching terminal nodes
+        if (self.left == null and self.right == null) return 0;
         const max = if (rightHeight > leftHeight) rightHeight else leftHeight;
 
         return max + 1;
@@ -76,21 +80,32 @@ const Node = struct {
         self.right = try Node.init(self.arena.allocator(), value);
     }
 
-    pub fn inorder(self: *Node) void {
+    pub fn inorder(self: *Node, allocator: std.mem.Allocator) !std.ArrayList(*Node) {
+        var list = std.ArrayList(*Node).init(allocator);
+        try self.inorderRec(&list);
+
+        return list;
+    }
+
+    fn inorderRec(self: *Node, list: *std.ArrayList(*Node)) !void {
         if (self.left) |left| {
-            left.inorder();
+            try left.inorderRec(list);
         }
 
-        std.debug.print("{d}\n", .{self.value});
+        try list.append(self);
 
         if (self.right) |right| {
-            right.inorder();
+            try right.inorderRec(list);
         }
     }
 };
 
 pub fn main() !void {
-    const tree = try Node.init(std.heap.page_allocator, 10);
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    defer _ = gpa.deinit();
+
+    const tree = try Node.init(allocator, 10);
     defer tree.deinit();
 
     try tree.insert(20);
@@ -98,7 +113,12 @@ pub fn main() !void {
     try tree.insert(15);
     try tree.insert(5);
 
-    tree.inorder();
+    const list = try tree.inorder(allocator);
+    defer list.deinit();
+
+    for (list.items) |node| {
+        std.debug.print("{d} ", .{node.value});
+    }
 
     std.debug.print("\n", .{});
 
@@ -106,9 +126,7 @@ pub fn main() !void {
 
     if (search == null) {
         std.debug.print("search: null\n", .{});
-        return;
+    } else {
+        std.debug.print("search: {d}\n", .{search.?.value});
     }
-
-    std.debug.print("tree height: {d}\n", .{tree.height()});
-    std.debug.print("search: {d}\n", .{search.?.value});
 }

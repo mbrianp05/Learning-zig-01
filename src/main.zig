@@ -98,6 +98,69 @@ const Node = struct {
             try right.inorderRec(list);
         }
     }
+
+    pub fn nodesAtDepth(self: *Node, allocator: std.mem.Allocator, depth: u32) !std.ArrayList(*Node) {
+        if (depth > self.height()) {
+            return error.DepthGreaterThanTreeHeight;
+        }
+
+        var nodes = std.ArrayList(*Node).init(allocator);
+        try self.nodesAtDepthRec(&nodes, depth);
+
+        return nodes;
+    }
+
+    fn nodesAtDepthRec(self: *Node, nodes: *std.ArrayList(*Node), depth: u32) !void {
+        if (depth == 0) {
+            try nodes.append(self);
+
+            return;
+        }
+
+        if (self.left) |left| {
+            try left.nodesAtDepthRec(nodes, depth - 1);
+        }
+
+        if (self.right) |right| {
+            try right.nodesAtDepthRec(nodes, depth - 1);
+        }
+    }
+
+    fn padding(spaces: u32, char: u8) void {
+        for (0..spaces) |_| {
+            std.debug.print("{c}", .{char});
+        }
+    }
+
+    pub fn printTree(self: *Node) !void {
+        try self.printTreeRec(0);
+    }
+
+    fn printTreeRec(self: *Node, depth: u32) !void {
+        const h = self.height();
+
+        if (depth > h) return;
+        padding((h - depth) * 8, ' ');
+
+        var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+        defer _ = gpa.deinit();
+
+        const allocator = gpa.allocator();
+
+        const nodes = try self.nodesAtDepth(allocator, depth);
+        defer nodes.deinit();
+
+        for (nodes.items, 0..) |node, index| {
+            std.debug.print("{d}", .{node.value});
+            const padSize = if (index % 2 != 0) 3 else h * 8;
+
+            padding(padSize, ' ');
+        }
+
+        std.debug.print("\n", .{});
+
+        try self.printTreeRec(depth + 1);
+    }
 };
 
 pub fn main() !void {
@@ -113,6 +176,8 @@ pub fn main() !void {
     try tree.insert(7);
     try tree.insert(15);
     try tree.insert(5);
+    try tree.insert(8);
+    try tree.insert(22);
 
     const list = try tree.inorder(allocator);
     defer list.deinit();
@@ -127,8 +192,22 @@ pub fn main() !void {
 
     if (search == null) {
         std.debug.print("search: null\n", .{});
-        return;
+    } else {
+        std.debug.print("search: {d}\n", .{search.?.value});
     }
 
-    std.debug.print("search: {d}\n", .{search.?.value});
+    const depth = 2;
+
+    const nodes = try tree.nodesAtDepth(allocator, depth);
+    defer nodes.deinit();
+
+    std.debug.print("Nodes at depth {d}: ", .{depth});
+
+    for (nodes.items) |item| {
+        std.debug.print("{d} ", .{item.value});
+    }
+
+    std.debug.print("\n", .{});
+
+    try tree.printTree();
 }
